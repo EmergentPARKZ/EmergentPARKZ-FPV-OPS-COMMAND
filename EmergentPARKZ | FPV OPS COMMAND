@@ -1,0 +1,1659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EmergentPARKZ | FPV OPS COMMAND CENTER</title>
+<style>
+/* ═══════════════════════════════════════════════
+   CORE RESET & BASE
+═══════════════════════════════════════════════ */
+* { margin:0; padding:0; box-sizing:border-box; }
+:root {
+  --green: #00ff88;
+  --red: #ff3333;
+  --orange: #ff8c00;
+  --blue: #4fc3f7;
+  --purple: #a78bfa;
+  --gold: #ffd700;
+  --dark: #0a0a0f;
+  --panel: #0d1117;
+  --border: #1e1e2e;
+}
+body {
+  background: var(--dark);
+  color: #e0e0e0;
+  font-family: 'Courier New', monospace;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ═══════════════════════════════════════════════
+   SCANLINE OVERLAY
+═══════════════════════════════════════════════ */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,255,136,0.01) 2px,
+    rgba(0,255,136,0.01) 4px
+  );
+  pointer-events: none;
+  z-index: 9998;
+}
+
+/* ═══════════════════════════════════════════════
+   NOTIFICATION TOAST
+═══════════════════════════════════════════════ */
+.toast {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  background: #0d1b2a;
+  border: 1px solid var(--green);
+  color: var(--green);
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.8em;
+  z-index: 9999;
+  display: none;
+  letter-spacing: 1px;
+  max-width: 300px;
+  box-shadow: 0 0 20px rgba(0,255,136,0.3);
+}
+
+/* ═══════════════════════════════════════════════
+   HEADER
+═══════════════════════════════════════════════ */
+.header {
+  background: linear-gradient(135deg, #0a0a0f, #0d1b2a, #0a1a0a);
+  border-bottom: 3px solid #ff0000;
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 0 30px rgba(255,0,0,0.3);
+}
+.logo-block { display: flex; flex-direction: column; }
+.logo-main {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #fff;
+  letter-spacing: 3px;
+  text-shadow: 0 0 20px #ff0000;
+}
+.logo-main span { color: #ff0000; }
+.logo-sub { font-size: 0.65em; color: #888; letter-spacing: 4px; }
+.header-center {
+  text-align: center;
+  flex: 1;
+}
+.mission-clock {
+  font-size: 1.4em;
+  color: var(--green);
+  font-weight: bold;
+  letter-spacing: 3px;
+  text-shadow: 0 0 15px var(--green);
+}
+.mission-date { font-size: 0.65em; color: #555; letter-spacing: 2px; }
+.header-right { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.status-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.65em;
+  letter-spacing: 2px;
+  font-weight: bold;
+}
+.pill-green { background: rgba(0,255,136,0.15); border: 1px solid var(--green); color: var(--green); }
+.pill-red { background: rgba(255,51,51,0.15); border: 1px solid var(--red); color: var(--red); }
+.pill-orange { background: rgba(255,140,0,0.15); border: 1px solid var(--orange); color: var(--orange); }
+
+/* ═══════════════════════════════════════════════
+   STATUS BAR
+═══════════════════════════════════════════════ */
+.status-bar {
+  background: #050508;
+  border-bottom: 1px solid #1a1a1a;
+  padding: 6px 20px;
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+.status-item { font-size: 0.7em; color: #555; }
+.status-item span { color: var(--green); font-weight: bold; }
+.status-item.warn span { color: var(--orange); }
+.status-item.alert span { color: var(--red); }
+
+/* ═══════════════════════════════════════════════
+   NAV TABS
+═══════════════════════════════════════════════ */
+.nav-tabs {
+  background: #050508;
+  border-bottom: 1px solid #1a1a1a;
+  display: flex;
+  overflow-x: auto;
+  padding: 0 10px;
+}
+.nav-tab {
+  padding: 10px 18px;
+  font-size: 0.72em;
+  letter-spacing: 1px;
+  color: #555;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  white-space: nowrap;
+  transition: all 0.2s;
+  background: none;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  font-family: 'Courier New', monospace;
+}
+.nav-tab:hover { color: #aaa; }
+.nav-tab.active { color: var(--green); border-bottom-color: var(--green); }
+
+/* ═══════════════════════════════════════════════
+   MAIN CONTENT
+═══════════════════════════════════════════════ */
+.main { padding: 20px; max-width: 1400px; margin: 0 auto; }
+.tab-content { display: none; }
+.tab-content.active { display: block; }
+
+/* ═══════════════════════════════════════════════
+   SECTION HEADERS
+═══════════════════════════════════════════════ */
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #1a1a1a;
+}
+.section-title { font-size: 0.85em; letter-spacing: 3px; font-weight: bold; }
+.section-line { flex: 1; height: 1px; background: linear-gradient(to right, #1a1a1a, transparent); }
+
+/* ═══════════════════════════════════════════════
+   PANELS
+═══════════════════════════════════════════════ */
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin-bottom: 18px;
+}
+.panel.green-border { border-color: var(--green); box-shadow: 0 0 15px rgba(0,255,136,0.1); }
+.panel.red-border { border-color: var(--red); box-shadow: 0 0 15px rgba(255,51,51,0.1); }
+.panel.gold-border { border-color: var(--gold); box-shadow: 0 0 15px rgba(255,215,0,0.1); }
+.panel.purple-border { border-color: var(--purple); box-shadow: 0 0 15px rgba(167,139,250,0.1); }
+
+/* ═══════════════════════════════════════════════
+   GRID LAYOUTS
+═══════════════════════════════════════════════ */
+.grid-2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 15px; }
+.grid-3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; }
+.grid-4 { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+
+/* ═══════════════════════════════════════════════
+   AGENT CARDS
+═══════════════════════════════════════════════ */
+.agent-card {
+  background: #0a0a0f;
+  border: 2px solid #222;
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 0.3s;
+  position: relative;
+}
+.agent-card.state-on { border-color: var(--green); box-shadow: 0 0 20px rgba(0,255,136,0.2); }
+.agent-card.state-hold { border-color: var(--orange); box-shadow: 0 0 20px rgba(255,140,0,0.2); }
+.agent-card.state-off { border-color: #222; opacity: 0.7; }
+.agent-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+.agent-name { font-size: 1em; font-weight: bold; letter-spacing: 2px; }
+.agent-id { font-size: 0.65em; color: #444; }
+.agent-role { font-size: 0.7em; color: #666; letter-spacing: 1px; margin-bottom: 10px; text-transform: uppercase; }
+.agent-task-box {
+  background: #050508;
+  border: 1px solid #1a1a1a;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 0.72em;
+  color: #888;
+  margin-bottom: 12px;
+  min-height: 45px;
+}
+.task-lbl { color: #333; font-size: 0.7em; letter-spacing: 1px; margin-bottom: 3px; }
+
+/* TOGGLE ROW */
+.toggle-row { display: flex; gap: 6px; margin-bottom: 10px; }
+.tbtn {
+  flex: 1;
+  padding: 7px 4px;
+  border-radius: 5px;
+  border: 1px solid #333;
+  background: #111;
+  color: #666;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.68em;
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.tbtn:hover { transform: scale(1.05); }
+.tbtn.t-on { background: rgba(0,255,136,0.15); border-color: var(--green); color: var(--green); }
+.tbtn.t-hold { background: rgba(255,140,0,0.15); border-color: var(--orange); color: var(--orange); }
+.tbtn.t-off { background: rgba(255,51,51,0.15); border-color: var(--red); color: var(--red); }
+
+/* ACTION ROW */
+.action-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.abtn {
+  flex: 1;
+  min-width: 60px;
+  padding: 7px 4px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.65em;
+  font-weight: bold;
+  letter-spacing: 1px;
+  transition: all 0.2s;
+}
+.abtn:hover { transform: scale(1.05); opacity: 0.9; }
+.abtn-green { background: var(--green); color: #000; }
+.abtn-orange { background: var(--orange); color: #000; }
+.abtn-red { background: var(--red); color: #fff; }
+.abtn-blue { background: var(--blue); color: #000; }
+.abtn-purple { background: var(--purple); color: #000; }
+
+/* STAT ROW */
+.stat-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.stat-box { background: #050508; border: 1px solid #1a1a1a; border-radius: 5px; padding: 7px; text-align: center; }
+.stat-num { font-size: 1em; font-weight: bold; color: var(--green); }
+.stat-lbl { font-size: 0.55em; color: #444; letter-spacing: 1px; }
+
+/* STATUS DOT */
+.sdot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 5px;
+  background: #333;
+}
+.sdot.on { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 2s infinite; }
+.sdot.hold { background: var(--orange); }
+.sdot.off { background: #333; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+/* ═══════════════════════════════════════════════
+   FACTORY ROOM CARDS
+═══════════════════════════════════════════════ */
+.factory-card {
+  background: #0a0a0f;
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 16px;
+  transition: all 0.3s;
+  cursor: pointer;
+}
+.factory-card:hover { border-color: #444; transform: translateY(-2px); }
+.factory-card.running { border-color: var(--green); }
+.factory-card.paused { border-color: var(--orange); }
+.factory-emoji { font-size: 2em; margin-bottom: 8px; }
+.factory-name { font-size: 0.85em; font-weight: bold; letter-spacing: 2px; color: #ccc; margin-bottom: 4px; }
+.factory-status { font-size: 0.65em; letter-spacing: 1px; margin-bottom: 10px; }
+.factory-revenue { font-size: 1.3em; font-weight: bold; color: var(--gold); }
+.factory-rev-lbl { font-size: 0.6em; color: #555; }
+.factory-bar { height: 4px; background: #1a1a1a; border-radius: 2px; margin-top: 10px; }
+.factory-bar-fill { height: 100%; border-radius: 2px; background: var(--green); transition: width 0.5s; }
+
+/* ═══════════════════════════════════════════════
+   REVENUE PANELS
+═══════════════════════════════════════════════ */
+.rev-big {
+  text-align: center;
+  padding: 20px;
+}
+.rev-total { font-size: 3em; font-weight: bold; color: var(--gold); text-shadow: 0 0 20px rgba(255,215,0,0.5); }
+.rev-label { font-size: 0.7em; color: #555; letter-spacing: 3px; margin-bottom: 5px; }
+.rev-sub { font-size: 0.8em; color: #888; }
+
+.rev-stream {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 0;
+  border-bottom: 1px solid #1a1a1a;
+  font-size: 0.78em;
+}
+.rev-stream:last-child { border-bottom: none; }
+.rev-stream-name { color: #888; }
+.rev-stream-amt { color: var(--gold); font-weight: bold; }
+.rev-stream-status { font-size: 0.65em; padding: 2px 8px; border-radius: 10px; }
+.rs-live { background: rgba(0,255,136,0.15); color: var(--green); }
+.rs-pending { background: rgba(255,140,0,0.15); color: var(--orange); }
+.rs-setup { background: rgba(100,100,100,0.15); color: #666; }
+
+/* ═══════════════════════════════════════════════
+   FPV DRONE FLEET
+═══════════════════════════════════════════════ */
+.drone-card {
+  background: #0a0a0f;
+  border: 1px solid #222;
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+  transition: all 0.3s;
+}
+.drone-card.airborne { border-color: var(--blue); box-shadow: 0 0 15px rgba(79,195,247,0.2); }
+.drone-card.grounded { border-color: #333; }
+.drone-card.maintenance { border-color: var(--orange); }
+.drone-icon { font-size: 2.5em; margin-bottom: 6px; }
+.drone-name { font-size: 0.8em; font-weight: bold; letter-spacing: 2px; color: var(--blue); }
+.drone-status { font-size: 0.65em; margin: 4px 0; }
+.drone-battery { height: 6px; background: #1a1a1a; border-radius: 3px; margin-top: 8px; }
+.drone-bat-fill { height: 100%; border-radius: 3px; transition: width 0.5s; }
+
+/* ═══════════════════════════════════════════════
+   BUS MANUFACTURING
+═══════════════════════════════════════════════ */
+.bus-phase {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: #050508;
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: all 0.3s;
+}
+.bus-phase.complete { border-color: var(--green); }
+.bus-phase.active-phase { border-color: var(--orange); }
+.bus-phase.pending { opacity: 0.5; }
+.phase-num {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.75em;
+  font-weight: bold;
+  background: #1a1a1a;
+  color: #555;
+  flex-shrink: 0;
+}
+.phase-num.done { background: var(--green); color: #000; }
+.phase-num.cur { background: var(--orange); color: #000; }
+.phase-info { flex: 1; }
+.phase-name { font-size: 0.8em; font-weight: bold; color: #ccc; }
+.phase-detail { font-size: 0.65em; color: #555; margin-top: 2px; }
+.phase-value { font-size: 0.85em; color: var(--gold); font-weight: bold; }
+
+/* ═══════════════════════════════════════════════
+   TRUST FUND
+═══════════════════════════════════════════════ */
+.trust-meter {
+  background: #050508;
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 12px;
+  text-align: center;
+}
+.trust-amount { font-size: 2em; font-weight: bold; color: var(--green); }
+.trust-label { font-size: 0.65em; color: #555; letter-spacing: 2px; }
+.trust-bar { height: 8px; background: #1a1a1a; border-radius: 4px; margin: 10px 0; }
+.trust-fill { height: 100%; border-radius: 4px; background: linear-gradient(to right, var(--green), var(--gold)); transition: width 1s; }
+.trust-goal { font-size: 0.7em; color: #888; }
+
+/* ═══════════════════════════════════════════════
+   SOCIAL PORTALS
+═══════════════════════════════════════════════ */
+.portal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.portal-btn {
+  background: #0a0a0f;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 12px 8px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  display: block;
+  color: #888;
+  font-size: 0.7em;
+  letter-spacing: 1px;
+}
+.portal-btn:hover { transform: translateY(-3px); border-color: #555; color: #ccc; }
+.portal-icon { font-size: 1.8em; display: block; margin-bottom: 5px; }
+
+/* ═══════════════════════════════════════════════
+   PIPELINE FLOW
+═══════════════════════════════════════════════ */
+.pipe-flow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 15px;
+}
+.pipe-node {
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 10px 14px;
+  text-align: center;
+  font-size: 0.72em;
+  min-width: 90px;
+}
+.pn-you { border-color: var(--green); color: var(--green); }
+.pn-liberty { border-color: #ff6b35; color: #ff6b35; }
+.pn-eagle { border-color: var(--blue); color: var(--blue); }
+.pn-vault { border-color: var(--purple); color: var(--purple); }
+.pn-publish { border-color: var(--gold); color: var(--gold); }
+.pipe-arr { color: #333; font-size: 1.2em; }
+
+/* ═══════════════════════════════════════════════
+   LOG FEED
+═══════════════════════════════════════════════ */
+.log-feed {
+  background: #050508;
+  border: 1px solid #1a1a1a;
+  border-radius: 8px;
+  padding: 12px;
+  height: 200px;
+  overflow-y: auto;
+  font-size: 0.72em;
+}
+.log-entry { margin-bottom: 4px; line-height: 1.4; }
+.log-entry.lg-success { color: var(--green); }
+.log-entry.lg-warn { color: var(--orange); }
+.log-entry.lg-info { color: var(--blue); }
+.log-entry.lg-error { color: var(--red); }
+.log-entry.lg-gold { color: var(--gold); }
+
+/* ═══════════════════════════════════════════════
+   MASTER CONTROL PANEL
+═══════════════════════════════════════════════ */
+.master-panel {
+  background: linear-gradient(135deg, #0a0a0f, #1a0000);
+  border: 2px solid var(--red);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+  text-align: center;
+  box-shadow: 0 0 30px rgba(255,0,0,0.2);
+}
+.master-title { font-size: 1em; color: var(--red); letter-spacing: 4px; margin-bottom: 5px; }
+.master-sub { font-size: 0.7em; color: #555; margin-bottom: 15px; }
+.master-btns { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+.mbtn {
+  padding: 10px 25px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8em;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: all 0.3s;
+}
+.mbtn:hover { transform: scale(1.05); }
+.mbtn-stop { background: var(--red); color: #fff; }
+.mbtn-hold { background: var(--orange); color: #000; }
+.mbtn-go { background: var(--green); color: #000; }
+.mbtn-lock { background: var(--purple); color: #fff; }
+
+/* ═══════════════════════════════════════════════
+   SEASON SELECTOR
+═══════════════════════════════════════════════ */
+.season-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.season-card {
+  background: #0a0a0f;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.72em;
+}
+.season-card:hover { border-color: #444; }
+.season-card.active-s { border-color: #ff6b35; background: rgba(255,107,53,0.1); color: #ff6b35; }
+.season-emoji { font-size: 1.8em; display: block; margin-bottom: 5px; }
+
+/* ═══════════════════════════════════════════════
+   RULES PANEL
+═══════════════════════════════════════════════ */
+.rule-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid #1a1a1a;
+  font-size: 0.75em;
+  color: #888;
+}
+.rule-row:last-child { border-bottom: none; }
+.rule-n { color: var(--purple); font-weight: bold; min-width: 25px; }
+.rule-text { flex: 1; }
+
+/* ═══════════════════════════════════════════════
+   FORM ELEMENTS
+═══════════════════════════════════════════════ */
+.input-field {
+  background: #050508;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 10px 14px;
+  color: #ccc;
+  font-family: 'Courier New', monospace;
+  font-size: 0.8em;
+  width: 100%;
+  margin-bottom: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.input-field:focus { border-color: var(--green); }
+.input-label { font-size: 0.7em; color: #555; letter-spacing: 1px; margin-bottom: 4px; display: block; }
+.full-btn {
+  width: 100%;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-family: 'Courier New', monospace;
+  font-size: 0.85em;
+  font-weight: bold;
+  letter-spacing: 2px;
+  transition: all 0.3s;
+  margin-bottom: 8px;
+}
+.full-btn:hover { transform: scale(1.02); opacity: 0.9; }
+.fb-green { background: var(--green); color: #000; }
+.fb-orange { background: var(--orange); color: #000; }
+.fb-red { background: var(--red); color: #fff; }
+.fb-blue { background: var(--blue); color: #000; }
+.fb-gold { background: var(--gold); color: #000; }
+.fb-purple { background: var(--purple); color: #fff; }
+
+/* ═══════════════════════════════════════════════
+   FOOTER
+═══════════════════════════════════════════════ */
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: #222;
+  font-size: 0.65em;
+  letter-spacing: 2px;
+  border-top: 1px solid #1a1a1a;
+  margin-top: 30px;
+}
+
+/* ═══════════════════════════════════════════════
+   RESPONSIVE
+═══════════════════════════════════════════════ */
+@media (max-width: 600px) {
+  .header { padding: 10px; }
+  .logo-main { font-size: 1em; }
+  .mission-clock { font-size: 1em; }
+  .main { padding: 10px; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ═══════════════════════════════════════════
+     HEADER
+═══════════════════════════════════════════ -->
+<div class="header">
+  <div class="logo-block">
+    <div class="logo-main">EMERGENT<span>PARKZ</span></div>
+    <div class="logo-sub">FPV OPS COMMAND CENTER</div>
+  </div>
+  <div class="header-center">
+    <div class="mission-clock" id="clock">00:00:00</div>
+    <div class="mission-date" id="mdate">LOADING...</div>
+  </div>
+  <div class="header-right">
+    <div class="status-pill pill-green">⚡ OVERRIDE: ACTIVE</div>
+    <div class="status-pill pill-red">🎯 MISSION: LIVE</div>
+    <div class="status-pill pill-orange" id="seasonPill">🇺🇸 4TH OF JULY</div>
+  </div>
+</div>
+
+<!-- STATUS BAR -->
+<div class="status-bar">
+  <div class="status-item">AGENTS: <span id="sb-agents">1/3 ACTIVE</span></div>
+  <div class="status-item">REVENUE: <span id="sb-rev">$2,055</span></div>
+  <div class="status-item">FACTORIES: <span id="sb-fac">7 ROOMS</span></div>
+  <div class="status-item warn">TRUST FUND: <span>PENDING SETUP</span></div>
+  <div class="status-item">FPV FLEET: <span>3 DRONES</span></div>
+  <div class="status-item">BUS MFG: <span>PHASE 1</span></div>
+  <div class="status-item">QUARTERLY DEPOSIT: <span>Q3 2025</span></div>
+  <div class="status-item">BOSS STATUS: <span>ONLINE</span></div>
+</div>
+
+<!-- NAV TABS -->
+<div class="nav-tabs">
+  <button class="nav-tab active" onclick="switchTab('mission')">🎯 MISSION</button>
+  <button class="nav-tab" onclick="switchTab('agents')">🤖 AGENTS</button>
+  <button class="nav-tab" onclick="switchTab('factories')">🏭 FACTORIES</button>
+  <button class="nav-tab" onclick="switchTab('revenue')">💰 REVENUE</button>
+  <button class="nav-tab" onclick="switchTab('fpv')">🚁 FPV FLEET</button>
+  <button class="nav-tab" onclick="switchTab('pipeline')">⚡ PIPELINE</button>
+  <button class="nav-tab" onclick="switchTab('bus')">🚌 BUS MFG</button>
+  <button class="nav-tab" onclick="switchTab('trust')">🌿 TRUST FUND</button>
+  <button class="nav-tab" onclick="switchTab('portals')">🌐 PORTALS</button>
+  <button class="nav-tab" onclick="switchTab('season')">📅 SEASONS</button>
+  <button class="nav-tab" onclick="switchTab('rules')">🔒 RULES</button>
+  <button class="nav-tab" onclick="switchTab('log')">📋 LOG</button>
+</div>
+
+<!-- ═══════════════════════════════════════════
+     MAIN
+═══════════════════════════════════════════ -->
+<div class="main">
+
+<!-- ─────────────────────────────────────────
+     TAB: MISSION CONTROL
+───────────────────────────────────────── -->
+<div class="tab-content active" id="tab-mission">
+
+  <!-- MASTER CONTROL -->
+  <div class="master-panel">
+    <div class="master-title">🛑 MASTER OVERRIDE CONTROL</div>
+    <div class="master-sub">YOU ARE THE BOSS — Nothing moves without your approval</div>
+    <div class="master-btns">
+      <button class="mbtn mbtn-go" onclick="allAgents('on')">▶ ACTIVATE ALL</button>
+      <button class="mbtn mbtn-hold" onclick="allAgents('hold')">⏸ HOLD ALL</button>
+      <button class="mbtn mbtn-stop" onclick="allAgents('off')">🛑 STOP ALL</button>
+      <button class="mbtn mbtn-lock" onclick="lockSystem()">🔒 LOCK SYSTEM</button>
+    </div>
+  </div>
+
+  <!-- MISSION STATS -->
+  <div class="grid-4" style="margin-bottom:18px;">
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:2em;font-weight:bold;color:var(--gold);">$2,055</div>
+      <div style="font-size:0.65em;color:#555;letter-spacing:2px;">TOTAL REVENUE</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:2em;font-weight:bold;color:var(--green);">37</div>
+      <div style="font-size:0.65em;color:#555;letter-spacing:2px;">ETSY ORDERS</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:2em;font-weight:bold;color:var(--blue);">7</div>
+      <div style="font-size:0.65em;color:#555;letter-spacing:2px;">FACTORY ROOMS</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:2em;font-weight:bold;color:var(--purple);">60+</div>
+      <div style="font-size:0.65em;color:#555;letter-spacing:2px;">AI AGENTS</div>
+    </div>
+  </div>
+
+  <!-- QUICK AGENT STATUS -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">⚡ AGENT STATUS OVERVIEW</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="grid-3">
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#050508;border-radius:8px;border:1px solid #1a1a1a;">
+        <span class="sdot on" id="qdot1"></span>
+        <div>
+          <div style="font-size:0.8em;font-weight:bold;color:#ff6b35;">🎨 LIBERTY</div>
+          <div style="font-size:0.65em;color:#555;">CREATOR — ACTIVE</div>
+        </div>
+        <div style="margin-left:auto;font-size:0.65em;color:var(--green);" id="q1-state">ON</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#050508;border-radius:8px;border:1px solid #1a1a1a;">
+        <span class="sdot off" id="qdot2"></span>
+        <div>
+          <div style="font-size:0.8em;font-weight:bold;color:var(--blue);">📢 EAGLE</div>
+          <div style="font-size:0.65em;color:#555;">DISTRIBUTOR — STANDBY</div>
+        </div>
+        <div style="margin-left:auto;font-size:0.65em;color:#555;" id="q2-state">OFF</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;padding:10px;background:#050508;border-radius:8px;border:1px solid #1a1a1a;">
+        <span class="sdot off" id="qdot3"></span>
+        <div>
+          <div style="font-size:0.8em;font-weight:bold;color:var(--purple);">💰 VAULT</div>
+          <div style="font-size:0.65em;color:#555;">REVENUE MGR — STANDBY</div>
+        </div>
+        <div style="margin-left:auto;font-size:0.65em;color:#555;" id="q3-state">OFF</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LIVE LOG MINI -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">📋 LIVE ACTIVITY</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="log-feed" id="miniLog">
+      <div class="log-entry lg-success">[BOOT] FPV OPS COMMAND CENTER initialized.</div>
+      <div class="log-entry lg-info">[SYSTEM] Human Override: ACTIVE — Boss online.</div>
+      <div class="log-entry lg-warn">[LIBERTY] Awaiting task assignment — Season: 4th of July</div>
+      <div class="log-entry">[EAGLE] Standing by for approved content from LIBERTY.</div>
+      <div class="log-entry">[VAULT] Revenue tracking live. Trust Fund: pending setup.</div>
+      <div class="log-entry lg-gold">[REVENUE] Etsy Factory: $2,000+ | 37 orders confirmed.</div>
+    </div>
+  </div>
+
+</div><!-- end tab-mission -->
+
+<!-- ─────────────────────────────────────────
+     TAB: AGENTS
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-agents">
+
+  <div class="panel red-border" style="text-align:center;margin-bottom:18px;">
+    <div style="font-size:0.85em;color:var(--red);letter-spacing:3px;margin-bottom:8px;">🤖 AGENT COMMAND CENTER</div>
+    <div style="font-size:0.7em;color:#555;">All agents report to YOU. Nothing executes without your approval.</div>
+  </div>
+
+  <div class="grid-3">
+
+    <!-- LIBERTY -->
+    <div class="agent-card state-on" id="card-1">
+      <div class="agent-head">
+        <div>
+          <span class="sdot on" id="dot-1"></span>
+          <span class="agent-name" style="color:#ff6b35;">🎨 LIBERTY</span>
+        </div>
+        <span class="agent-id">AGENT-01</span>
+      </div>
+      <div class="agent-role">Creator · Art · Music · Lyrics · Seasonal</div>
+      <div class="agent-task-box">
+        <div class="task-lbl">ACTIVE TASK:</div>
+        <span id="task-1">🇺🇸 4th of July patriotic music production. Generating themes, lyrics, and seasonal content for your review.</span>
+      </div>
+      <div class="toggle-row">
+        <button class="tbtn t-on" id="t1-on" onclick="setA(1,'on')">▶ ON</button>
+        <button class="tbtn" id="t1-hold" onclick="setA(1,'hold')">⏸ HOLD</button>
+        <button class="tbtn" id="t1-off" onclick="setA(1,'off')">⏹ OFF</button>
+      </div>
+      <div class="action-row">
+        <button class="abtn abtn-green" onclick="aAct(1,'APPROVED')">✅ APPROVE</button>
+        <button class="abtn abtn-orange" onclick="aAct(1,'REVISE')">✏️ REVISE</button>
+        <button class="abtn abtn-red" onclick="aAct(1,'REJECT')">❌ REJECT</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-num" id="s1-o">0</div><div class="stat-lbl">OUTPUTS</div></div>
+        <div class="stat-box"><div class="stat-num" id="s1-a">0</div><div class="stat-lbl">APPROVED</div></div>
+        <div class="stat-box"><div class="stat-num" id="s1-r">0</div><div class="stat-lbl">REJECTED</div></div>
+      </div>
+    </div>
+
+    <!-- EAGLE -->
+    <div class="agent-card state-off" id="card-2">
+      <div class="agent-head">
+        <div>
+          <span class="sdot off" id="dot-2"></span>
+          <span class="agent-name" style="color:var(--blue);">📢 EAGLE</span>
+        </div>
+        <span class="agent-id">AGENT-02</span>
+      </div>
+      <div class="agent-role">Distributor · Marketing · Publishing · Social</div>
+      <div class="agent-task-box">
+        <div class="task-lbl">ACTIVE TASK:</div>
+        <span id="task-2">⏳ Standby. Awaiting approved content from LIBERTY before distribution begins.</span>
+      </div>
+      <div class="toggle-row">
+        <button class="tbtn" id="t2-on" onclick="setA(2,'on')">▶ ON</button>
+        <button class="tbtn" id="t2-hold" onclick="setA(2,'hold')">⏸ HOLD</button>
+        <button class="tbtn t-off" id="t2-off" onclick="setA(2,'off')">⏹ OFF</button>
+      </div>
+      <div class="action-row">
+        <button class="abtn abtn-green" onclick="aAct(2,'RELEASED')">🚀 RELEASE</button>
+        <button class="abtn abtn-orange" onclick="aAct(2,'HOLD')">⏸ HOLD</button>
+        <button class="abtn abtn-red" onclick="aAct(2,'CANCEL')">🚫 CANCEL</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-num" id="s2-o">0</div><div class="stat-lbl">POSTED</div></div>
+        <div class="stat-box"><div class="stat-num" id="s2-a">0</div><div class="stat-lbl">LIVE</div></div>
+        <div class="stat-box"><div class="stat-num" id="s2-r">0</div><div class="stat-lbl">HELD</div></div>
+      </div>
+    </div>
+
+    <!-- VAULT -->
+    <div class="agent-card state-off" id="card-3">
+      <div class="agent-head">
+        <div>
+          <span class="sdot off" id="dot-3"></span>
+          <span class="agent-name" style="color:var(--purple);">💰 VAULT</span>
+        </div>
+        <span class="agent-id">AGENT-03</span>
+      </div>
+      <div class="agent-role">Revenue · Investments · Trust Fund · Deposits</div>
+      <div class="agent-task-box">
+        <div class="task-lbl">ACTIVE TASK:</div>
+        <span id="task-3">⏳ Standby. Monitoring all revenue streams. Wildlife Trust Fund: PENDING SETUP.</span>
+      </div>
+      <div class="toggle-row">
+        <button class="tbtn" id="t3-on" onclick="setA(3,'on')">▶ ON</button>
+        <button class="tbtn" id="t3-hold" onclick="setA(3,'hold')">⏸ HOLD</button>
+        <button class="tbtn t-off" id="t3-off" onclick="setA(3,'off')">⏹ OFF</button>
+      </div>
+      <div class="action-row">
+        <button class="abtn abtn-green" onclick="aAct(3,'EXECUTE')">💸 EXECUTE</button>
+        <button class="abtn abtn-blue" onclick="aAct(3,'REPORT')">📊 REPORT</button>
+        <button class="abtn abtn-red" onclick="aAct(3,'LOCK')">🔒 LOCK</button>
+      </div>
+      <div class="stat-row">
+        <div class="stat-box"><div class="stat-num" id="s3-o">$0</div><div class="stat-lbl">REVENUE</div></div>
+        <div class="stat-box"><div class="stat-num" id="s3-a">$0</div><div class="stat-lbl">INVESTED</div></div>
+        <div class="stat-box"><div class="stat-num" id="s3-r">$0</div><div class="stat-lbl">TRUST</div></div>
+      </div>
+    </div>
+
+  </div><!-- end grid -->
+
+  <!-- ADDITIONAL AGENTS -->
+  <div class="panel" style="margin-top:18px;">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--blue);">🤖 EXTENDED AGENT ROSTER (60+ AGENTS)</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="grid-4">
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">🛒</div>
+        <div style="color:#ccc;font-weight:bold;">ETSY BOT</div>
+        <div style="color:var(--green);font-size:0.8em;">ACTIVE</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">🎵</div>
+        <div style="color:#ccc;font-weight:bold;">MUSIC BOT</div>
+        <div style="color:var(--green);font-size:0.8em;">ACTIVE</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">🎨</div>
+        <div style="color:#ccc;font-weight:bold;">ART BOT</div>
+        <div style="color:var(--orange);font-size:0.8em;">HOLD</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">📧</div>
+        <div style="color:#ccc;font-weight:bold;">NEWSLETTER</div>
+        <div style="color:var(--orange);font-size:0.8em;">HOLD</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">⭐</div>
+        <div style="color:#ccc;font-weight:bold;">REVIEW BOT</div>
+        <div style="color:var(--green);font-size:0.8em;">ACTIVE</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">📊</div>
+        <div style="color:#ccc;font-weight:bold;">ANALYTICS</div>
+        <div style="color:var(--green);font-size:0.8em;">ACTIVE</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">🔒</div>
+        <div style="color:#ccc;font-weight:bold;">SECURITY</div>
+        <div style="color:var(--green);font-size:0.8em;">ACTIVE</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a1a;border-radius:8px;padding:10px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.3em;">🧪</div>
+        <div style="color:#ccc;font-weight:bold;">TESTER</div>
+        <div style="color:var(--blue);font-size:0.8em;">STANDBY</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end tab-agents -->
+
+<!-- ─────────────────────────────────────────
+     TAB: FACTORIES
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-factories">
+
+  <div class="panel" style="text-align:center;margin-bottom:18px;">
+    <div style="font-size:0.85em;color:var(--gold);letter-spacing:3px;margin-bottom:5px;">🏭 AI FACTORY ECOSYSTEM</div>
+    <div style="font-size:0.7em;color:#555;">7 Active Factory Rooms — All running 24/7</div>
+  </div>
+
+  <div class="grid-3">
+
+    <div class="factory-card running" onclick="factoryClick('Etsy Conveyor Belt')">
+      <div class="factory-emoji">🛒</div>
+      <div class="factory-name">ETSY CONVEYOR BELT</div>
+      <div class="factory-status" style="color:var(--green);">● RUNNING</div>
+      <div class="factory-revenue">$2,000+</div>
+      <div class="factory-rev-lbl">37 orders · 2 weeks</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:85%;"></div></div>
+    </div>
+
+    <div class="factory-card running" onclick="factoryClick('Vibes Studio')">
+      <div class="factory-emoji">🎵</div>
+      <div class="factory-name">VIBES STUDIO</div>
+      <div class="factory-status" style="color:var(--green);">● RUNNING</div>
+      <div class="factory-revenue">$0</div>
+      <div class="factory-rev-lbl">Spotify / YouTube upload</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:40%;background:var(--blue);"></div></div>
+    </div>
+
+    <div class="factory-card running" onclick="factoryClick('Services Factory')">
+      <div class="factory-emoji">💼</div>
+      <div class="factory-name">SERVICES FACTORY</div>
+      <div class="factory-status" style="color:var(--green);">● RUNNING</div>
+      <div class="factory-revenue">$55</div>
+      <div class="factory-rev-lbl">Fiverr thumbnail AI</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:20%;background:var(--purple);"></div></div>
+    </div>
+
+    <div class="factory-card paused" onclick="factoryClick('Game Assets Factory')">
+      <div class="factory-emoji">🎮</div>
+      <div class="factory-name">GAME ASSETS FACTORY</div>
+      <div class="factory-status" style="color:var(--orange);">⏸ BUILDING</div>
+      <div class="factory-revenue">$0</div>
+      <div class="factory-rev-lbl">2D assets for Etsy</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:15%;background:var(--orange);"></div></div>
+    </div>
+
+    <div class="factory-card paused" onclick="factoryClick('Newsletter Factory')">
+      <div class="factory-emoji">📧</div>
+      <div class="factory-name">NEWSLETTER FACTORY</div>
+      <div class="factory-status" style="color:var(--orange);">⏸ BUILDING</div>
+      <div class="factory-revenue">$0</div>
+      <div class="factory-rev-lbl">Marketing automation</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:10%;background:var(--orange);"></div></div>
+    </div>
+
+    <div class="factory-card running" onclick="factoryClick('Google Review Manager')">
+      <div class="factory-emoji">⭐</div>
+      <div class="factory-name">REVIEW MANAGER</div>
+      <div class="factory-status" style="color:var(--green);">● RUNNING</div>
+      <div class="factory-revenue">$30/mo</div>
+      <div class="factory-rev-lbl">Per client · Recurring</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:30%;background:var(--gold);"></div></div>
+    </div>
+
+    <div class="factory-card paused" onclick="factoryClick('Marketing Factory')">
+      <div class="factory-emoji">📣</div>
+      <div class="factory-name">MARKETING FACTORY</div>
+      <div class="factory-status" style="color:var(--orange);">⏸ BUILDING</div>
+      <div class="factory-revenue">$0</div>
+      <div class="factory-rev-lbl">Content · Visuals · Schedule</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:25%;background:var(--orange);"></div></div>
+    </div>
+
+    <div class="factory-card" onclick="factoryClick('Flow Tool')">
+      <div class="factory-emoji">🌊</div>
+      <div class="factory-name">FLOW TOOL</div>
+      <div class="factory-status" style="color:var(--blue);">◉ ACTIVE</div>
+      <div class="factory-revenue">-75%</div>
+      <div class="factory-rev-lbl">Claude API cost reduction</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:75%;background:var(--blue);"></div></div>
+    </div>
+
+    <div class="factory-card" onclick="factoryClick('FPV Content Factory')">
+      <div class="factory-emoji">🚁</div>
+      <div class="factory-name">FPV CONTENT FACTORY</div>
+      <div class="factory-status" style="color:var(--blue);">◉ STANDBY</div>
+      <div class="factory-revenue">$0</div>
+      <div class="factory-rev-lbl">Drone footage · YouTube</div>
+      <div class="factory-bar"><div class="factory-bar-fill" style="width:5%;background:var(--blue);"></div></div>
+    </div>
+
+  </div>
+
+  <!-- FACTORY TOTAL -->
+  <div class="panel gold-border" style="text-align:center;margin-top:18px;">
+    <div style="font-size:0.65em;color:#555;letter-spacing:2px;margin-bottom:5px;">TOTAL FACTORY OUTPUT</div>
+    <div style="font-size:2.5em;font-weight:bold;color:var(--gold);">$2,085+</div>
+    <div style="font-size:0.7em;color:#888;margin-top:5px;">Operating cost: ~$125/mo · Net: $1,960+ · Scaling...</div>
+  </div>
+
+</div><!-- end tab-factories -->
+
+<!-- ─────────────────────────────────────────
+     TAB: REVENUE
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-revenue">
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div class="panel gold-border">
+      <div class="rev-big">
+        <div class="rev-label">TOTAL REVENUE TO DATE</div>
+        <div class="rev-total">$2,085</div>
+        <div class="rev-sub">↑ Growing · Deposit-Only System</div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="rev-big">
+        <div class="rev-label">NEXT QUARTERLY DEPOSIT</div>
+        <div class="rev-total" style="color:var(--green);font-size:2em;">Q3 2025</div>
+        <div class="rev-sub">ACH Deposit-Only · No Withdrawals Triggered</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REVENUE STREAMS -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--gold);">💰 REVENUE STREAMS</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🛒 Etsy — Digital Products</span>
+      <span class="rev-stream-amt">$2,000+</span>
+      <span class="rev-stream-status rs-live">LIVE</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">💼 Fiverr — Services</span>
+      <span class="rev-stream-amt">$55</span>
+      <span class="rev-stream-status rs-live">LIVE</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">⭐ Google Review Manager</span>
+      <span class="rev-stream-amt">$30/mo</span>
+      <span class="rev-stream-status rs-live">LIVE</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🎵 Music Streaming (Spotify/YouTube)</span>
+      <span class="rev-stream-amt">$0</span>
+      <span class="rev-stream-status rs-pending">PENDING</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🎮 Game Assets (Etsy)</span>
+      <span class="rev-stream-amt">$0</span>
+      <span class="rev-stream-status rs-pending">BUILDING</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🚌 Bus Manufacturing</span>
+      <span class="rev-stream-amt">$13K-30K/unit</span>
+      <span class="rev-stream-status rs-setup">PHASE 1</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🚁 FPV Content / YouTube</span>
+      <span class="rev-stream-amt">$0</span>
+      <span class="rev-stream-status rs-setup">SETUP</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">🌿 Affiliate Links</span>
+      <span class="rev-stream-amt">$0</span>
+      <span class="rev-stream-status rs-setup">SETUP</span>
+    </div>
+  </div>
+
+  <!-- PAYOUT SYSTEM -->
+  <div class="panel green-border">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">🏦 DEPOSIT-ONLY PAYOUT SYSTEM</div>
+      <div class="section-line"></div>
+    </div>
+    <div style="font-size:0.75em;color:#888;margin-bottom:12px;">
+      ⚠️ Secure deposit-only ACH system. Revenue flows IN only. No withdrawal triggers in code.
+    </div>
+    <div class="grid-2">
+      <div>
+        <div class="rev-stream">
+          <span class="rev-stream-name">💚 Cash App</span>
+          <span><a href="https://cash.app/$EmergentPARKZ" target="_blank" style="color:var(--green);text-decoration:none;">$EmergentPARKZ</a></span>
+        </div>
+        <div class="rev-stream">
+          <span class="rev-stream-name">💙 PayPal</span>
+          <span><a href="https://paypal.me/EmergentPARKZ" target="_blank" style="color:var(--blue);text-decoration:none;">paypal.me/EmergentPARKZ</a></span>
+        </div>
+      </div>
+      <div>
+        <div class="rev-stream">
+          <span class="rev-stream-name">📅 Quarterly Schedule</span>
+          <span style="color:var(--gold);">Q1·Q2·Q3·Q4</span>
+        </div>
+        <div class="rev-stream">
+          <span class="rev-stream-name">🔒 ACH Status</span>
+          <span class="rev-stream-status rs-live">DEPOSIT ONLY</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- REINVESTMENT RULES -->
+  <div class="panel purple-border">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--purple);">♻️ REINVESTMENT PROTOCOL</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="rule-row"><span class="rule-n">60%</span><span class="rule-text">Reinvested into factory operations, tools, and scaling</span></div>
+    <div class="rule-row"><span class="rule-n">20%</span><span class="rule-text">Wildlife Trust Fund allocation — automatic quarterly</span></div>
+    <div class="rule-row"><span class="rule-n">10%</span><span class="rule-text">Bus Manufacturing seed fund — accumulating</span></div>
+    <div class="rule-row"><span class="rule-n">10%</span><span class="rule-text">Emergency reserve — locked, boss-only access</span></div>
+  </div>
+
+</div><!-- end tab-revenue -->
+
+<!-- ─────────────────────────────────────────
+     TAB: FPV FLEET
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-fpv">
+
+  <div class="panel" style="text-align:center;margin-bottom:18px;border-color:var(--blue);">
+    <div style="font-size:0.85em;color:var(--blue);letter-spacing:3px;margin-bottom:5px;">🚁 FPV DRONE FLEET COMMAND</div>
+    <div style="font-size:0.7em;color:#555;">Content creation · Racing · Aerial photography · YouTube</div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:18px;">
+    <div class="drone-card airborne">
+      <div class="drone-icon">🚁</div>
+      <div class="drone-name">ALPHA-1</div>
+      <div class="drone-status" style="color:var(--blue);">● AIRBORNE</div>
+      <div style="font-size:0.65em;color:#555;margin-bottom:5px;">5" Freestyle · 6S</div>
+      <div class="drone-battery">
+        <div class="drone-bat-fill" style="width:75%;background:var(--green);"></div>
+      </div>
+      <div style="font-size:0.6em;color:#555;margin-top:3px;">BATTERY: 75%</div>
+    </div>
+    <div class="drone-card grounded">
+      <div class="drone-icon">🚁</div>
+      <div class="drone-name">BRAVO-2</div>
+      <div class="drone-status" style="color:#555;">◉ GROUNDED</div>
+      <div style="font-size:0.65em;color:#555;margin-bottom:5px;">7" Long Range · GPS</div>
+      <div class="drone-battery">
+        <div class="drone-bat-fill" style="width:100%;background:var(--green);"></div>
+      </div>
+      <div style="font-size:0.6em;color:#555;margin-top:3px;">BATTERY: 100%</div>
+    </div>
+    <div class="drone-card maintenance">
+      <div class="drone-icon">🔧</div>
+      <div class="drone-name">CHARLIE-3</div>
+      <div class="drone-status" style="color:var(--orange);">⚙ MAINTENANCE</div>
+      <div style="font-size:0.65em;color:#555;margin-bottom:5px;">Cinewhoop · 3"</div>
+      <div class="drone-battery">
+        <div class="drone-bat-fill" style="width:20%;background:var(--red);"></div>
+      </div>
+      <div style="font-size:0.6em;color:#555;margin-top:3px;">BATTERY: 20%</div>
+    </div>
+    <div class="drone-card">
+      <div class="drone-icon">➕</div>
+      <div class="drone-name">ADD DRONE</div>
+      <div class="drone-status" style="color:#333;">◉ SLOT OPEN</div>
+      <div style="font-size:0.65em;color:#333;margin-bottom:5px;">Register new unit</div>
+      <button class="full-btn fb-blue" style="margin-top:10px;font-size:0.65em;padding:6px;" onclick="toast('🚁 Drone registration coming soon!')">+ REGISTER</button>
+    </div>
+  </div>
+
+  <!-- FPV MISSIONS -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--blue);">🎯 FPV CONTENT MISSIONS</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="bus-phase complete">
+      <div class="phase-num done">✓</div>
+      <div class="phase-info">
+        <div class="phase-name">MISSION 1 — Freestyle Practice Footage</div>
+        <div class="phase-detail">Captured · Editing pending</div>
+      </div>
+      <div class="phase-value">DONE</div>
+    </div>
+    <div class="bus-phase active-phase">
+      <div class="phase-num cur">▶</div>
+      <div class="phase-info">
+        <div class="phase-name">MISSION 2 — 4th of July Aerial Shots</div>
+        <div class="phase-detail">Scheduled for July 4th · Patriotic content</div>
+      </div>
+      <div class="phase-value">ACTIVE</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">3</div>
+      <div class="phase-info">
+        <div class="phase-name">MISSION 3 — YouTube Channel Launch</div>
+        <div class="phase-detail">FPV content monetization · AdSense setup</div>
+      </div>
+      <div class="phase-value">QUEUED</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">4</div>
+      <div class="phase-info">
+        <div class="phase-name">MISSION 4 — Racing Circuit Entry</div>
+        <div class="phase-detail">MultiGP registration · Local events</div>
+      </div>
+      <div class="phase-value">QUEUED</div>
+    </div>
+  </div>
+
+</div><!-- end tab-fpv -->
+
+<!-- ─────────────────────────────────────────
+     TAB: PIPELINE
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-pipeline">
+
+  <div class="panel green-border" style="margin-bottom:18px;">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">⚡ IMMUTABLE WORKFLOW PIPELINE</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="pipe-flow">
+      <div class="pipe-node pn-you">👤 YOU<br><small>BOSS</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-liberty">🎨 LIBERTY<br><small>CREATES</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-you">👤 REVIEW<br><small>APPROVE?</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-eagle">📢 EAGLE<br><small>PUBLISHES</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-you">👤 REVIEW<br><small>APPROVE?</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-vault">💰 VAULT<br><small>MANAGES</small></div>
+      <div class="pipe-arr">→</div>
+      <div class="pipe-node pn-publish">🌿 TRUST<br><small>ALLOCATED</small></div>
+    </div>
+  </div>
+
+  <!-- CONTENT UPLOAD -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--blue);">📤 CONTENT UPLOAD PIPELINE</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="grid-2">
+      <div>
+        <label class="input-label">CONTENT TITLE</label>
+        <input class="input-field" id="c-title" placeholder="e.g. 4th of July Patriotic Anthem...">
+        <label class="input-label">DESCRIPTION</label>
+        <textarea class="input-field" id="c-desc" rows="3" placeholder="Describe your content..."></textarea>
+        <label class="input-label">TAGS / HASHTAGS</label>
+        <input class="input-field" id="c-tags" placeholder="#FPV #patriotic #4thofJuly...">
+      </div>
+      <div>
+        <label class="input-label">PLATFORM TARGET</label>
+        <select class="input-field" id="c-platform">
+          <option>YouTube</option>
+          <option>Spotify</option>
+          <option>Etsy</option>
+          <option>TikTok</option>
+          <option>Instagram</option>
+          <option>SoundCloud</option>
+        </select>
+        <label class="input-label">CONTENT TYPE</label>
+        <select class="input-field" id="c-type">
+          <option>🎵 Music Track</option>
+          <option>🎥 Video</option>
+          <option>🎨 Digital Art</option>
+          <option>📄 Newsletter</option>
+          <option>🎮 Game Asset</option>
+        </select>
+        <button class="full-btn fb-green" onclick="submitContent()">🚀 SUBMIT FOR REVIEW</button>
+        <button class="full-btn fb-blue" onclick="aiCaption()">🤖 AI AUTO-CAPTION</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONTENT QUEUE -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--orange);">📋 CONTENT REVIEW QUEUE</div>
+      <div class="section-line"></div>
+    </div>
+    <div id="contentQueue" style="font-size:0.75em;color:#555;text-align:center;padding:20px;">
+      No content in queue. Submit content above for your review.
+    </div>
+  </div>
+
+</div><!-- end tab-pipeline -->
+
+<!-- ─────────────────────────────────────────
+     TAB: BUS MANUFACTURING
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-bus">
+
+  <div class="panel" style="text-align:center;margin-bottom:18px;border-color:var(--orange);">
+    <div style="font-size:0.85em;color:var(--orange);letter-spacing:3px;margin-bottom:5px;">🚌 BUS MANUFACTURING DIVISION</div>
+    <div style="font-size:0.7em;color:#555;">Utility Diesel Buses · Undercutting Blue Bird / Thomas / IC Bus by $20K</div>
+  </div>
+
+  <div class="grid-4" style="margin-bottom:18px;">
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:1.5em;font-weight:bold;color:var(--gold);">$58K-75K</div>
+      <div style="font-size:0.6em;color:#555;letter-spacing:1px;">SELL PRICE / UNIT</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:1.5em;font-weight:bold;color:var(--orange);">$35K-45K</div>
+      <div style="font-size:0.6em;color:#555;letter-spacing:1px;">COST / UNIT</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:1.5em;font-weight:bold;color:var(--green);">$13K-30K</div>
+      <div style="font-size:0.6em;color:#555;letter-spacing:1px;">MARGIN / UNIT</div>
+    </div>
+    <div class="panel" style="text-align:center;">
+      <div style="font-size:1.5em;font-weight:bold;color:var(--blue);">PHASE 1</div>
+      <div style="font-size:0.6em;color:#555;letter-spacing:1px;">CURRENT STATUS</div>
+    </div>
+  </div>
+
+  <!-- PHASES -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--orange);">🔧 MANUFACTURING PHASES</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="bus-phase active-phase">
+      <div class="phase-num cur">1</div>
+      <div class="phase-info">
+        <div class="phase-name">PROTOTYPE DESIGN</div>
+        <div class="phase-detail">Basic diesel utility bus specs · CAD design · DOT pre-review</div>
+      </div>
+      <div class="phase-value">ACTIVE</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">2</div>
+      <div class="phase-info">
+        <div class="phase-name">CHASSIS SOURCING</div>
+        <div class="phase-detail">Freightliner / Ford F-series chassis · Fleet supplier deals</div>
+      </div>
+      <div class="phase-value">$35K-45K</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">3</div>
+      <div class="phase-info">
+        <div class="phase-name">SMALL BATCH PRODUCTION</div>
+        <div class="phase-detail">3-5 units · Quality testing · DOT certification process</div>
+      </div>
+      <div class="phase-value">QUEUED</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">4</div>
+      <div class="phase-info">
+        <div class="phase-name">DOT CERTIFICATION</div>
+        <div class="phase-detail">Federal Motor Carrier Safety · FMVSS compliance</div>
+      </div>
+      <div class="phase-value">QUEUED</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">5</div>
+      <div class="phase-info">
+        <div class="phase-name">GOVERNMENT CONTRACTS</div>
+        <div class="phase-detail">School districts · Municipal fleets · Pre-replacement pipeline</div>
+      </div>
+      <div class="phase-value">TARGET</div>
+    </div>
+    <div class="bus-phase pending">
+      <div class="phase-num">6</div>
+      <div class="phase-info">
+        <div class="phase-name">SCALED PRODUCTION</div>
+        <div class="phase-detail">Full manufacturing facility · Fleet sales · National contracts</div>
+      </div>
+      <div class="phase-value">VISION</div>
+    </div>
+  </div>
+
+  <!-- COMPETITORS -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--red);">⚔️ COMPETITIVE ADVANTAGE</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">Blue Bird Bus</span>
+      <span class="rev-stream-amt">$78K-95K</span>
+      <span class="rev-stream-status" style="background:rgba(255,51,51,0.15);color:var(--red);">COMPETITOR</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">Thomas Built Buses</span>
+      <span class="rev-stream-amt">$80K-100K</span>
+      <span class="rev-stream-status" style="background:rgba(255,51,51,0.15);color:var(--red);">COMPETITOR</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name">IC Bus (Navistar)</span>
+      <span class="rev-stream-amt">$75K-90K</span>
+      <span class="rev-stream-status" style="background:rgba(255,51,51,0.15);color:var(--red);">COMPETITOR</span>
+    </div>
+    <div class="rev-stream">
+      <span class="rev-stream-name" style="color:var(--green);font-weight:bold;">🚌 EmergentPARKZ Bus</span>
+      <span class="rev-stream-amt" style="color:var(--green);">$58K-75K</span>
+      <span class="rev-stream-status rs-live">-$20K CHEAPER</span>
+    </div>
+  </div>
+
+</div><!-- end tab-bus -->
+
+<!-- ─────────────────────────────────────────
+     TAB: TRUST FUND
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-trust">
+
+  <div class="panel" style="text-align:center;margin-bottom:18px;border-color:var(--green);">
+    <div style="font-size:0.85em;color:var(--green);letter-spacing:3px;margin-bottom:5px;">🌿 WILDLIFE TRUST FUND</div>
+    <div style="font-size:0.7em;color:#555;">20% of all revenue allocated · Protecting wildlife · Building legacy</div>
+  </div>
+
+  <div class="grid-2" style="margin-bottom:18px;">
+    <div class="trust-meter">
+      <div class="trust-label">CURRENT TRUST BALANCE</div>
+      <div class="trust-amount" id="trustBalance">$417</div>
+      <div class="trust-bar">
+        <div class="trust-fill" id="trustFill" style="width:4%;"></div>
+      </div>
+      <div class="trust-goal">Goal: $10,000 · 4% funded</div>
+    </div>
+    <div class="trust-meter">
+      <div class="trust-label">TOTAL ALLOCATED (20% of $2,085)</div>
+      <div class="trust-amount" style="color:var(--gold);">$417</div>
+      <div class="trust-bar">
+        <div class="trust-fill" style="width:4%;"></div>
+      </div>
+      <div class="trust-goal">Next allocation: Q3 2025 deposit</div>
+    </div>
+  </div>
+
+  <!-- TRUST RULES -->
+  <div class="panel green-border">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">📋 TRUST FUND RULES</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="rule-row"><span class="rule-n">01</span><span class="rule-text">20% of ALL revenue streams allocated automatically</span></div>
+    <div class="rule-row"><span class="rule-n">02</span><span class="rule-text">Quarterly disbursement — same schedule as boss deposits</span></div>
+    <div class="rule-row"><span class="rule-n">03</span><span class="rule-text">Funds used for wildlife conservation, habitat protection</span></div>
+    <div class="rule-row"><span class="rule-n">04</span><span class="rule-text">Trust grows WITH the business — never shrinks</span></div>
+    <div class="rule-row"><span class="rule-n">05</span><span class="rule-text">Boss has full override and reporting access always</span></div>
+    <div class="rule-row"><span class="rule-n">06</span><span class="rule-text">Annual wildlife impact report generated by VAULT agent</span></div>
+  </div>
+
+  <!-- WILDLIFE CAUSES -->
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--green);">🦅 SUPPORTED CAUSES</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="grid-4">
+      <div style="background:#050508;border:1px solid #1a1a2a;border-radius:8px;padding:12px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.5em;">🦅</div>
+        <div style="color:#ccc;margin-top:5px;">Bald Eagle Conservation</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a2a;border-radius:8px;padding:12px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.5em;">🐺</div>
+        <div style="color:#ccc;margin-top:5px;">Wolf Habitat Protection</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a2a;border-radius:8px;padding:12px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.5em;">🌲</div>
+        <div style="color:#ccc;margin-top:5px;">Forest Preservation</div>
+      </div>
+      <div style="background:#050508;border:1px solid #1a1a2a;border-radius:8px;padding:12px;text-align:center;font-size:0.72em;">
+        <div style="font-size:1.5em;">🐟</div>
+        <div style="color:#ccc;margin-top:5px;">River & Fish Ecosystems</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end tab-trust -->
+
+<!-- ─────────────────────────────────────────
+     TAB: PORTALS
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-portals">
+
+  <div class="panel" style="margin-bottom:18px;">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--blue);">🌐 SOCIAL MEDIA PORTALS</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="portal-grid">
+      <a class="portal-btn" href="https://youtube.com" target="_blank"><span class="portal-icon">📺</span>YouTube</a>
+      <a class="portal-btn" href="https://tiktok.com" target="_blank"><span class="portal-icon">🎵</span>TikTok</a>
+      <a class="portal-btn" href="https://instagram.com" target="_blank"><span class="portal-icon">📸</span>Instagram</a>
+      <a class="portal-btn" href="https://twitter.com" target="_blank"><span class="portal-icon">🐦</span>Twitter/X</a>
+      <a class="portal-btn" href="https://facebook.com" target="_blank"><span class="portal-icon">👥</span>Facebook</a>
+      <a class="portal-btn" href="https://pinterest.com" target="_blank"><span class="portal-icon">📌</span>Pinterest</a>
+      <a class="portal-btn" href="https://linkedin.com" target="_blank"><span class="portal-icon">💼</span>LinkedIn</a>
+      <a class="portal-btn" href="https://reddit.com" target="_blank"><span class="portal-icon">🤖</span>Reddit</a>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-bottom:18px;">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--purple);">🤖 AI TOOL PORTALS</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="portal-grid">
+      <a class="portal-btn" href="https://chat.openai.com" target="_blank"><span class="portal-icon">🧠</span>ChatGPT</a>
+      <a class="portal-btn" href="https://midjourney.com" target="_blank"><span class="portal-icon">🎨</span>Midjourney</a>
+      <a class="portal-btn" href="https://runwayml.com" target="_blank"><span class="portal-icon">🎬</span>Runway ML</a>
+      <a class="portal-btn" href="https://suno.ai" target="_blank"><span class="portal-icon">🎵</span>Suno AI</a>
+      <a class="portal-btn" href="https://udio.com" target="_blank"><span class="portal-icon">🎶</span>Udio</a>
+      <a class="portal-btn" href="https://elevenlabs.io" target="_blank"><span class="portal-icon">🔊</span>ElevenLabs</a>
+      <a class="portal-btn" href="https://pika.art" target="_blank"><span class="portal-icon">✨</span>Pika</a>
+      <a class="portal-btn" href="https://firefly.adobe.com" target="_blank"><span class="portal-icon">🔥</span>Firefly</a>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--gold);">💰 REVENUE PORTALS</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="portal-grid">
+      <a class="portal-btn" href="https://etsy.com" target="_blank"><span class="portal-icon">🛒</span>Etsy</a>
+      <a class="portal-btn" href="https://fiverr.com" target="_blank"><span class="portal-icon">💼</span>Fiverr</a>
+      <a class="portal-btn" href="https://cash.app/$EmergentPARKZ" target="_blank"><span class="portal-icon">💚</span>Cash App</a>
+      <a class="portal-btn" href="https://paypal.me/EmergentPARKZ" target="_blank"><span class="portal-icon">💙</span>PayPal</a>
+      <a class="portal-btn" href="https://spotify.com" target="_blank"><span class="portal-icon">🎧</span>Spotify</a>
+      <a class="portal-btn" href="https://soundcloud.com" target="_blank"><span class="portal-icon">☁️</span>SoundCloud</a>
+      <a class="portal-btn" href="https://submithub.com" target="_blank"><span class="portal-icon">📬</span>SubmitHub</a>
+      <a class="portal-btn" href="https://make.com" target="_blank"><span class="portal-icon">⚙️</span>Make.com</a>
+    </div>
+  </div>
+
+</div><!-- end tab-portals -->
+
+<!-- ─────────────────────────────────────────
+     TAB: SEASONS
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-season">
+
+  <div class="panel" style="text-align:center;margin-bottom:18px;border-color:#ff6b35;">
+    <div style="font-size:0.85em;color:#ff6b35;letter-spacing:3px;margin-bottom:5px;">📅 SEASONAL CONTENT CALENDAR</div>
+    <div style="font-size:0.7em;color:#555;">Click a season to activate LIBERTY's content theme</div>
+  </div>
+
+  <div class="season-grid">
+    <div class="season-card active-s" onclick="setSeason(this,'4th of July 🇺🇸')">
+      <span class="season-emoji">🇺🇸</span>
+      <strong>4TH OF JULY</strong><br>
+      <small style="color:#ff6b35;">ACTIVE NOW</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Summer ☀️')">
+      <span class="season-emoji">☀️</span>
+      <strong>SUMMER</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Fall 🍂')">
+      <span class="season-emoji">🍂</span>
+      <strong>FALL</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Halloween 🎃')">
+      <span class="season-emoji">🎃</span>
+      <strong>HALLOWEEN</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Thanksgiving 🦃')">
+      <span class="season-emoji">🦃</span>
+      <strong>THANKSGIVING</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Christmas 🎄')">
+      <span class="season-emoji">🎄</span>
+      <strong>CHRISTMAS</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'New Year 🎆')">
+      <span class="season-emoji">🎆</span>
+      <strong>NEW YEAR</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Valentines ❤️')">
+      <span class="season-emoji">❤️</span>
+      <strong>VALENTINES</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'St Patricks ☘️')">
+      <span class="season-emoji">☘️</span>
+      <strong>ST PATRICKS</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Easter 🐣')">
+      <span class="season-emoji">🐣</span>
+      <strong>EASTER</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Memorial Day 🎖️')">
+      <span class="season-emoji">🎖️</span>
+      <strong>MEMORIAL DAY</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+    <div class="season-card" onclick="setSeason(this,'Veterans Day 🪖')">
+      <span class="season-emoji">🪖</span>
+      <strong>VETERANS DAY</strong><br>
+      <small style="color:#555;">QUEUED</small>
+    </div>
+  </div>
+
+</div><!-- end tab-season -->
+
+<!-- ─────────────────────────────────────────
+     TAB: RULES
+───────────────────────────────────────── -->
+<div class="tab-content" id="tab-rules">
+
+  <div class="panel purple-border" style="margin-bottom:18px;">
+    <div style="font-size:0.85em;color:var(--purple);letter-spacing:3px;margin-bottom:5px;text-align:center;">🔒 IMMUTABLE SYSTEM RULES</div>
+    <div style="font-size:0.7em;color:#555;text-align:center;">These rules cannot be overridden by agents — only by YOU</div>
+  </div>
+
+  <div class="panel">
+    <div class="section-head">
+      <div class="section-title" style="color:var(--red);">⚡ COMMAND RULES</div>
+      <div class="section-line"></div>
+    </div>
+    <div class="rule-row"><span class="rule-n">01</span><span class="rule-text">Nothing publishes without YOUR explicit sign-off</span></div>
+    <div class="rule-row"><span class="rule-n">02</span><span class="rule-text">Quality is checked on every single release — no exceptions</span></div>
+    <div class="rule-row"><span class="rule-n">03</span><span class="rule-text">Seasonal themes stay locked on current season — no drift</span></div>
+    <div class="rule-row"><span class="rule-n">04</span><span class="rule-text">Revenue reports delivered to YOU weekly by VAULT</span></div>
+    <div class="rule-row"><span class="rule-n">05</span><span class="rule-text">YOU can override any agent at any time — no delay</span></div>
+    <div class="rule-row"><span class="rule-n">06</span><span class="rule-text">Agents wait — they NEVER rush you or self-publish</span></div>
+    <div class="rule-row"><span class="rule-n">07</span><span class="rule-text">Wildlife Trust receives 20% allocation — always, no skipping</span></div>
+    <div class="rule-row"><span class="rule-n">08</span><span class="rule-text">No banking credentials EVER stored in code — deposit only</span></div>
+    <div class="rule-row"><span class="rule-n">09</span><span class="rule-text">Bus manufacturing seed fund grows with every revenue cycle</span></div>
+    <div class="rule-row"><span class="rule-n">10</span><span class="rule-text">Research protocol runs every 6 hours — boss reviews findings</span></div>
+    <div class="rule-row"><span class="rule-n">11</span><span class="rule-text">FPV footage reviewed before upload — no raw unedited posts</span></div>
+    <div class="rule-row"><span class="rule-n
